@@ -1,7 +1,7 @@
 
 # FIAP - Faculdade de Informática e Administração Paulista
 
-Projeto Visão Computacional + Integrações Agrícolas
+# LINK DO VÍDEO: [Youtube](https://youtu.be/ihhiZqWdmfs)
 
 ## Integrantes
 - Bruno Castro - RM558359: https://www.linkedin.com/in/bruno-castro-dias/
