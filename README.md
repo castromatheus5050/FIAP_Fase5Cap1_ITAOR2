@@ -1,4 +1,12 @@
-# FIAP_Fase5Cap1_ITAOR2
+
+# FIAP - Faculdade de Informática e Administração Paulista
+
+Projeto Visão Computacional + Integrações Agrícolas
+
+## Integrantes
+- Bruno Castro - RM558359: https://www.linkedin.com/in/bruno-castro-dias/
+- Hugo Mariano - RM560688: https://www.linkedin.com/in/hugomariano191628150/
+- Matheus Castro - RM559293: https://www.linkedin.com/in/matheus-castro-63644b224/
 
 PoC de assistente conversacional para atendimento inicial em saude, integrado ao watsonx Assistant com backend em Flask e interface de chat em React Native (Expo).
 
