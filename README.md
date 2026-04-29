@@ -1,50 +1,54 @@
 
-# FIAP - Faculdade de Informática e Administração Paulista
-
-# LINK DO VÍDEO: [Youtube](https://youtu.be/ihhiZqWdmfs)
+# FIAP - Challenge YOUVISA (Sprint 4)
 
 ## Integrantes
 - Bruno Castro - RM558359: https://www.linkedin.com/in/bruno-castro-dias/
 - Hugo Mariano - RM560688: https://www.linkedin.com/in/hugomariano191628150/
 - Matheus Castro - RM559293: https://www.linkedin.com/in/matheus-castro-63644b224/
 
-PoC de assistente conversacional para atendimento inicial em saude, integrado ao watsonx Assistant com backend em Flask e interface de chat em React Native (Expo).
+Projeto de atendimento inteligente YOUVISA com backend Flask e interface React Native (Expo), focado em fluxo modular de agentes, interpretacao de perguntas e historico estruturado de interacoes.
 
 ## Estrutura do projeto
 
-- `backend/`: API Flask que recebe mensagens do usuario e consulta o watsonx Assistant.
-- `frontend/`: aplicacao React Native (Expo) para envio e exibicao de mensagens.
-- `watson/`: modelo inicial do assistente (intents, entities e fluxo dialogal).
-- `docs/`: documentacao de setup e relatorio da atividade.
+- `backend/`: API principal, orquestracao multiagente e persistencia SQLite.
+- `frontend/`: interface do usuario para chat, consulta de processo e historico.
+- `docs/`: documentacao da entrega e material complementar.
+- `watson/`: artefatos de assistente (base inicial de intents/entities).
+
+## Entrega Sprint 4 - O que foi implementado
+
+- **Orquestracao multiagente** no backend, com agentes de:
+  - governanca e protecao contra prompt injection;
+  - interpretacao NLP (intent classification + entity extraction);
+  - consulta de conhecimento/processo;
+  - geracao de resposta controlada;
+  - logging estruturado.
+- **NLP aplicado** para identificar intencoes como status do processo, documentos, prazo, saudacao e despedida.
+- **Extracao de entidades** com identificacao de `process_id` (ex.: `VISA-202401`) e tipo de documento citado.
+- **Persistencia de interacoes** em SQLite (`backend/data/youvisa.db`) com sessao, pergunta, resposta, intent, entidades e timestamp.
+- **API modular** com endpoints para chat, historico e consulta de processo.
+- **Interface consolidada** com:
+  - conversa com o chatbot;
+  - painel de consulta rapida de processo;
+  - exibicao de historico recente da sessao.
 
 ## Arquivos principais
 
-- `backend/app.py`: endpoint de saude e endpoint de chat.
-- `backend/.env.example`: variaveis necessarias de configuracao.
-- `frontend/App.js`: interface de conversa e chamada ao backend.
-- `watson/assistant-model-inicial.json`: base para cadastro manual do assistente.
-- `docs/setup-ibm-watson.md`: guia de configuracao IBM Cloud/watsonx Assistant.
-- `docs/relatorio-atividade.md`: relatorio em Markdown pronto para exportar em PDF.
+- `backend/app.py`: API Flask com fluxo de agentes e governanca.
+- `frontend/App.js`: UI de atendimento com chat + historico + status.
+- `docs/sprint4-agentes-e-registro.md`: documento curto da Sprint 4.
 
-## Fluxo da aplicacao
+## Fluxo funcional
 
-1. O usuario digita uma mensagem no app React Native.
-2. O frontend envia `POST /chat` para o backend Flask.
-3. O backend cria/reutiliza `session_id` e envia a mensagem ao watsonx Assistant.
-4. O watsonx interpreta intencao e retorna resposta textual conforme o fluxo configurado.
-5. O backend devolve as respostas ao frontend.
-6. O frontend renderiza as respostas no chat.
+1. Usuario envia pergunta no frontend.
+2. Backend aplica filtro de governanca (escopo e injecao de prompt).
+3. Agente NLP classifica intencao e extrai entidades.
+4. Agente de conhecimento busca dados relevantes (ex.: status de processo).
+5. Agente de resposta retorna texto controlado ao contexto YOUVISA.
+6. Logger grava evento estruturado no banco.
+7. Frontend atualiza chat e historico.
 
-## Fluxo conversacional coberto na PoC
-
-- Saudacao inicial.
-- Agendamento de consulta (pergunta de periodo).
-- Duvidas sobre sintomas.
-- Informacoes de horario de atendimento.
-- Orientacao de emergencia.
-- Fallback para mensagens nao reconhecidas.
-
-## Execucao local (resumo)
+## Execucao local
 
 ### Backend
 
@@ -62,9 +66,7 @@ npx expo install react-dom react-native-web
 npm run web
 ```
 
-No modo web local, use `API_BASE_URL = "http://localhost:5000"` em `frontend/App.js`.
-
-## Variaveis de ambiente do backend
+## Variaveis de ambiente
 
 Configurar em `backend/.env`:
 
@@ -72,17 +74,15 @@ Configurar em `backend/.env`:
 WATSON_API_KEY=...
 WATSON_URL=...
 WATSON_ASSISTANT_ID=...
-WATSON_ENVIRONMENT_ID=...   # recomendacao PoC: draft environment id
+WATSON_ENVIRONMENT_ID=...
 WATSON_VERSION=2021-11-27
 ```
 
-## Endpoints da API
+> O sistema funciona mesmo sem Watson configurado (fallback local controlado), mas usa Watson como apoio para perguntas nao cobertas pelos templates.
 
-- `GET /health`: status da API e verificacao basica de configuracao.
-- `POST /chat`: recebe `{ message, session_id?, user_id? }` e retorna `{ session_id, responses }`.
+## Endpoints
 
-## Observacoes da PoC
-
-- Implementacao focada em fluxo direto, sem cobertura extensa de edge-cases.
-- O frontend e o backend rodam separadamente.
-- O endpoint raiz `/` no Flask retorna 404 por nao existir pagina web servida pelo backend (comportamento esperado).
+- `GET /health`
+- `POST /chat` -> `{ message, session_id?, user_id? }`
+- `GET /history/<session_id>`
+- `GET /process/<process_id>`

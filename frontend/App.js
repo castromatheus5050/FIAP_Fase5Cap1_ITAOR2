@@ -11,24 +11,46 @@ import {
 import { StatusBar } from "expo-status-bar";
 
 const API_BASE_URL = "http://localhost:5000";
+const PROCESS_ID_REGEX = /^VISA-\d{6}$/;
 
 export default function App() {
   const [sessionId, setSessionId] = useState(null);
+  const [intent, setIntent] = useState("-");
+  const [processIdInput, setProcessIdInput] = useState("");
+  const [processInfo, setProcessInfo] = useState(null);
+  const [history, setHistory] = useState([]);
   const [messages, setMessages] = useState([
     {
       from: "bot",
-      text: "Ola! Sou seu assistente inicial de saude. Em que posso ajudar?",
+      text: "Ola! Sou o assistente YOUVISA. Posso ajudar com status, documentos e prazo.",
     },
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const sendMessage = async () => {
-    const text = input.trim();
+  const loadHistory = async (currentSessionId) => {
+    if (!currentSessionId) return;
+    try {
+      const response = await fetch(`${API_BASE_URL}/history/${currentSessionId}`);
+      const data = await response.json();
+      if (response.ok) {
+        setHistory(Array.isArray(data.logs) ? data.logs : []);
+      }
+    } catch (error) {
+      // Optional UX path: failing to load history should not block chat.
+    }
+  };
+
+  const sendMessage = async (overrideText) => {
+    const text = (overrideText ?? input).trim();
     if (!text || loading) return;
 
     setMessages((prev) => [...prev, { from: "user", text }]);
-    setInput("");
+    if (overrideText === undefined) {
+      setInput("");
+    } else {
+      setProcessIdInput("");
+    }
     setLoading(true);
 
     try {
@@ -51,7 +73,11 @@ export default function App() {
         return;
       }
 
-      if (data.session_id) setSessionId(data.session_id);
+      if (data.session_id) {
+        setSessionId(data.session_id);
+        loadHistory(data.session_id);
+      }
+      if (data.intent) setIntent(data.intent);
 
       const replies = Array.isArray(data.responses) ? data.responses : [];
       if (!replies.length) {
@@ -79,11 +105,66 @@ export default function App() {
     }
   };
 
+  const consultProcess = async () => {
+    const processId = processIdInput.trim().toUpperCase();
+    if (!processId) return;
+    if (!PROCESS_ID_REGEX.test(processId)) {
+      setProcessInfo(null);
+      await sendMessage(processIdInput);
+      return;
+    }
+    setLoading(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/process/${processId}`);
+      const data = await response.json();
+      if (!response.ok) {
+        setProcessInfo({ error: data.error || "Processo nao encontrado." });
+        return;
+      }
+      setProcessInfo(data);
+    } catch (error) {
+      setProcessInfo({ error: "Falha de conexao ao consultar processo." });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar style="dark" />
       <View style={styles.header}>
-        <Text style={styles.title}>Assistente de Saude</Text>
+        <Text style={styles.title}>YOUVISA - Atendimento Inteligente</Text>
+        <Text style={styles.meta}>
+          Sessao: {sessionId || "nao iniciada"} | Intent atual: {intent}
+        </Text>
+      </View>
+
+      <View style={styles.processCard}>
+        <Text style={styles.sectionTitle}>Consulta rapida de processo</Text>
+        <View style={styles.inputRow}>
+          <TextInput
+            style={styles.input}
+            placeholder="Somente codigo (ex: VISA-202401)"
+            value={processIdInput}
+            onChangeText={setProcessIdInput}
+            editable={!loading}
+            autoCapitalize="characters"
+          />
+          <TouchableOpacity style={styles.button} onPress={consultProcess}>
+            <Text style={styles.buttonText}>{loading ? "..." : "Consultar"}</Text>
+          </TouchableOpacity>
+        </View>
+        {!!processInfo && (
+          <View style={styles.processBox}>
+            {"error" in processInfo ? (
+              <Text style={styles.errorText}>{processInfo.error}</Text>
+            ) : (
+              <Text style={styles.processText}>
+                {processInfo.process_id}: {processInfo.status}
+              </Text>
+            )}
+          </View>
+        )}
       </View>
 
       <ScrollView style={styles.chat} contentContainerStyle={styles.chatContent}>
@@ -99,6 +180,15 @@ export default function App() {
           </View>
         ))}
       </ScrollView>
+
+      <View style={styles.historyCard}>
+        <Text style={styles.sectionTitle}>Historico recente</Text>
+        {history.slice(0, 3).map((item, index) => (
+          <Text style={styles.historyText} key={`${item.created_at}-${index}`}>
+            Q: {item.question}
+          </Text>
+        ))}
+      </View>
 
       <View style={styles.inputRow}>
         <TextInput
@@ -129,9 +219,39 @@ const styles = StyleSheet.create({
     backgroundColor: "#ffffff",
   },
   title: {
-    fontSize: 20,
+    fontSize: 17,
+    fontWeight: "800",
+    color: "#161616",
+  },
+  meta: {
+    marginTop: 4,
+    color: "#525252",
+    fontSize: 12,
+  },
+  sectionTitle: {
+    fontSize: 14,
     fontWeight: "700",
     color: "#161616",
+    marginBottom: 6,
+  },
+  processCard: {
+    backgroundColor: "#ffffff",
+    margin: 12,
+    marginBottom: 0,
+    borderWidth: 1,
+    borderColor: "#dde1e6",
+    borderRadius: 10,
+    padding: 10,
+  },
+  processBox: {
+    marginTop: 8,
+  },
+  processText: {
+    color: "#0f62fe",
+    fontWeight: "600",
+  },
+  errorText: {
+    color: "#da1e28",
   },
   chat: {
     flex: 1,
@@ -157,6 +277,18 @@ const styles = StyleSheet.create({
   },
   bubbleText: {
     color: "#161616",
+  },
+  historyCard: {
+    backgroundColor: "#ffffff",
+    borderTopWidth: 1,
+    borderTopColor: "#dde1e6",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  historyText: {
+    fontSize: 12,
+    color: "#525252",
+    marginBottom: 2,
   },
   inputRow: {
     flexDirection: "row",
